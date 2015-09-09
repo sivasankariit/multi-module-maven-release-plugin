@@ -10,6 +10,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.invoker.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.transport.JschConfigSessionFactory;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
-import org.eclipse.jgit.transport.JschConfigSessionFactory;
 
 /**
  * Releases the project.
@@ -81,11 +81,34 @@ public class ReleaseMojo extends AbstractMojo {
 
     /**
      * <p>
-     *     Profiles to activate during the release.
+     * The artifact Ids of dependencies for which snapshot versions are allowed and will not be flagged as errors.
+     * This is useful when your project has specific dependencies that do not have any release versions.
      * </p>
      * <p>
-     *     Note that if any profiles are activated during the build using the `-P` or `--activate-profiles` will also be activated during release.
-     *     This gives two options for running releases: either configure it in the plugin configuration, or activate profiles from the command line.
+     * You can specify more goals and maven options. For example if you want to perform
+     * a clean, build a maven site, and then deploys it, use:
+     * </p>
+     * <pre>
+     * {@code
+     * <allowedSnapshotDependencies>
+     *     <allowedSnapshotDependency>
+     *         <groupId>com.xyz.abc</groupId>
+     *         <artifactId>a.b.c.d</artifactId>
+     *     </allowedSnapshotDependency>
+     * </allowedSnapshotDependencies>
+     * }
+     * </pre>
+     */
+    @Parameter(alias = "allowedSnapshotDependencies")
+    private List<Artifact> allowedSnapshotDependencies;
+
+    /**
+     * <p>
+     * Profiles to activate during the release.
+     * </p>
+     * <p>
+     * Note that if any profiles are activated during the build using the `-P` or `--activate-profiles` will also be activated during release.
+     * This gives two options for running releases: either configure it in the plugin configuration, or activate profiles from the command line.
      * </p>
      * @since 1.0.1
      */
@@ -100,7 +123,7 @@ public class ReleaseMojo extends AbstractMojo {
     private boolean skipTests;
 
     /**
-     * The modules to release, or no  value to to release the project from the root pom, which is the default.
+     * The modules to release, or no value to release the project from the root pom, which is the default.
      * The selected module plus any other modules it needs will be built and released also.
      * When run from the command line, this can be a comma-separated list of module names.
      */
@@ -124,7 +147,7 @@ public class ReleaseMojo extends AbstractMojo {
 
             List<AnnotatedTag> proposedTags = figureOutTagNamesAndThrowIfAlreadyExists(reactor.getModulesInBuildOrder(), repo, modulesToRelease);
 
-            List<File> changedFiles = updatePomsAndReturnChangedFiles(log, repo, reactor);
+            List<File> changedFiles = updatePomsAndReturnChangedFiles(log, repo, reactor, allowedSnapshotDependencies);
 
             // Do this before running the maven build in case the build uploads some artifacts and then fails. If it is
             // not tagged in a half-failed build, then subsequent releases will re-use a version that is already in Nexus
@@ -191,8 +214,8 @@ public class ReleaseMojo extends AbstractMojo {
         }
     }
 
-    private static List<File> updatePomsAndReturnChangedFiles(Log log, LocalGitRepo repo, Reactor reactor) throws MojoExecutionException, ValidationException {
-        PomUpdater pomUpdater = new PomUpdater(log, reactor);
+    private static List<File> updatePomsAndReturnChangedFiles(Log log, LocalGitRepo repo, Reactor reactor, List<Artifact> allowedSnapshotDependencies) throws MojoExecutionException, ValidationException {
+        PomUpdater pomUpdater = new PomUpdater(log, reactor, allowedSnapshotDependencies);
         PomUpdater.UpdateResult result = pomUpdater.updateVersion();
         if (!result.success()) {
             log.info("Going to revert changes because there was an error.");

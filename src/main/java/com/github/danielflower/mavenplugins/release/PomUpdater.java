@@ -17,10 +17,12 @@ public class PomUpdater {
 
     private final Log log;
     private final Reactor reactor;
+    private final List<Artifact> allowedSnapshotDependencies;
 
-    public PomUpdater(Log log, Reactor reactor) {
+    public PomUpdater(Log log, Reactor reactor, List<Artifact> allowedSnapshotDependencies) {
         this.log = log;
         this.reactor = reactor;
+        this.allowedSnapshotDependencies = allowedSnapshotDependencies;
     }
 
     public UpdateResult updateVersion() {
@@ -88,7 +90,7 @@ public class PomUpdater {
         }
         for (Dependency dependency : originalModel.getDependencies()) {
             String version = dependency.getVersion();
-            if (isSnapshot(version)) {
+            if (isSnapshot(version) && !isAllowedSnapshotDependency(dependency)) {
                 try {
                     ReleasableModule dependencyBeingReleased = reactor.find(dependency.getGroupId(), dependency.getArtifactId(), version);
                     dependency.setVersion(dependencyBeingReleased.getVersionToDependOn());
@@ -112,6 +114,15 @@ public class PomUpdater {
 
     private static boolean isMultiModuleReleasePlugin(Plugin plugin) {
         return plugin.getGroupId().equals("com.github.danielflower.mavenplugins") && plugin.getArtifactId().equals("multi-module-maven-release-plugin");
+    }
+
+    private boolean isAllowedSnapshotDependency(Dependency dependency) {
+        for (Artifact artifact : allowedSnapshotDependencies) {
+            if (dependency.getGroupId().equals(artifact.getGroupId()) && dependency.getArtifactId().equals(artifact.getArtifactId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isSnapshot(String version) {
