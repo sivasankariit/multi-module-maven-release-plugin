@@ -66,7 +66,7 @@ public class NextMojo extends AbstractMojo {
             configureJsch(log);
 
             LocalGitRepo repo = LocalGitRepo.fromCurrentDir(getRemoteUrlOrNullIfNoneSet(project.getScm()));
-            Reactor reactor = Reactor.fromProjects(log, repo, project, projects, buildNumber);
+            Reactor reactor = Reactor.fromProjects(log, repo, projects, buildNumber);
             figureOutTagNamesAndThrowIfAlreadyExists(reactor.getModulesInBuildOrder(), repo, modulesToRelease);
 
         } catch (ValidationException e) {

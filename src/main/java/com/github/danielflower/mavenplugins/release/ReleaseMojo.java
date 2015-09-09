@@ -120,7 +120,7 @@ public class ReleaseMojo extends AbstractMojo {
             LocalGitRepo repo = LocalGitRepo.fromCurrentDir(getRemoteUrlOrNullIfNoneSet(project.getScm()));
             repo.errorIfNotClean();
 
-            Reactor reactor = Reactor.fromProjects(log, repo, project, projects, buildNumber);
+            Reactor reactor = Reactor.fromProjects(log, repo, projects, buildNumber);
 
             List<AnnotatedTag> proposedTags = figureOutTagNamesAndThrowIfAlreadyExists(reactor.getModulesInBuildOrder(), repo, modulesToRelease);
 
@@ -275,6 +275,7 @@ public class ReleaseMojo extends AbstractMojo {
         if (skipTests) {
             goals.add("-DskipTests=true");
         }
+        request.setPomFile(project.getFile());
         request.setShowErrors(true);
         request.setDebug(getLog().isDebugEnabled());
         request.setGoals(goals);
@@ -288,7 +289,7 @@ public class ReleaseMojo extends AbstractMojo {
             boolean userExplicitlyWantsThisToBeReleased = modulesToRelease.contains(modulePath);
             boolean userImplicitlyWantsThisToBeReleased = modulesToRelease == null || modulesToRelease.size() == 0;
             if (userExplicitlyWantsThisToBeReleased || (userImplicitlyWantsThisToBeReleased && releasableModule.willBeReleased())) {
-                changedModules.add(modulePath);
+                changedModules.add(':' + releasableModule.getArtifactId());
             }
         }
         request.setProjects(changedModules);

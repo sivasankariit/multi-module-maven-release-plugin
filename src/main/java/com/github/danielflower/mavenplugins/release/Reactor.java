@@ -26,12 +26,12 @@ public class Reactor {
         return modulesInBuildOrder;
     }
 
-    public static Reactor fromProjects(Log log, LocalGitRepo gitRepo, MavenProject rootProject, List<MavenProject> projects, Long buildNumber) throws ValidationException, GitAPIException, MojoExecutionException {
+    public static Reactor fromProjects(Log log, LocalGitRepo gitRepo, List<MavenProject> projects, Long buildNumber) throws ValidationException, GitAPIException, MojoExecutionException {
         DiffDetector detector = new TreeWalkingDiffDetector(gitRepo.git.getRepository());
         List<ReleasableModule> modules = new ArrayList<ReleasableModule>();
         VersionNamer versionNamer = new VersionNamer();
         for (MavenProject project : projects) {
-            String relativePathToModule = calculateModulePath(rootProject, project);
+            String relativePathToModule = calculateModulePath(gitRepo, project);
             String artifactId = project.getArtifactId();
             String versionWithoutBuildNumber = project.getVersion().replace("-SNAPSHOT", "");
             List<AnnotatedTag> previousTagsForThisModule = AnnotatedTagFinder.tagsForVersion(gitRepo.git, artifactId, versionWithoutBuildNumber);
@@ -124,17 +124,20 @@ public class Reactor {
         return false;
     }
 
-    private static String calculateModulePath(MavenProject rootProject, MavenProject project) throws MojoExecutionException {
+    /**
+     * Get the path to the given {@code project} relative to the root of the git repository.
+     */
+    private static String calculateModulePath(LocalGitRepo gitRepo, MavenProject project) throws MojoExecutionException {
         // Getting canonical files because on Windows, it's possible one returns "C:\..." and the other "c:\..." which is rather amazing
-        File projectRoot;
+        File gitRoot;
         File moduleRoot;
         try {
-            projectRoot = rootProject.getBasedir().getCanonicalFile();
+            gitRoot = gitRepo.git.getRepository().getWorkTree().getCanonicalFile();
             moduleRoot = project.getBasedir().getCanonicalFile();
         } catch (IOException e) {
             throw new MojoExecutionException("Could not find directory paths for maven project", e);
         }
-        String relativePathToModule = Repository.stripWorkDir(projectRoot, moduleRoot);
+        String relativePathToModule = Repository.stripWorkDir(gitRoot, moduleRoot);
         if (relativePathToModule.length() == 0) {
             relativePathToModule = ".";
         }
