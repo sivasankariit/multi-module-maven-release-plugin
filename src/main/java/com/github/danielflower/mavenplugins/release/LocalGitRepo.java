@@ -10,6 +10,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.submodule.SubmoduleWalk;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,7 +59,7 @@ public class LocalGitRepo {
     private Status currentStatus() throws ValidationException {
         Status status;
         try {
-            status = git.status().call();
+            status = git.status().setIgnoreSubmodules(SubmoduleWalk.IgnoreSubmoduleMode.ALL).call();
         } catch (GitAPIException e) {
             throw new ValidationException("Error while checking if the Git repo is clean", e);
         }
