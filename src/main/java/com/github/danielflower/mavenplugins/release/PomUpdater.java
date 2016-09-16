@@ -117,6 +117,9 @@ public class PomUpdater {
     }
 
     private boolean isAllowedSnapshotDependency(Dependency dependency) {
+        if (allowedSnapshotDependencies == null) {
+            return false;
+        }
         for (Artifact artifact : allowedSnapshotDependencies) {
             if (dependency.getGroupId().equals(artifact.getGroupId()) && dependency.getArtifactId().equals(artifact.getArtifactId())) {
                 return true;
